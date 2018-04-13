@@ -28,11 +28,6 @@ bool containsAnEmptyClause(PokeballTourneeA90degreeSudEst C){
     return false;
 }
 
-void removeAllMatchingElements_Efficient(std::vector<int> & vec, int elem)
-{
-    vec.erase(std::remove(vec.begin(), vec.end(), elem), vec.end());
-}
-
 PokeballTourneeA90degreeSudEst propagationUnitaire(const PokeballTourneeA90degreeSudEst& EnsembleDeClause, const BalaisCouille& l){
     PokeballTourneeA90degreeSudEst C = EnsembleDeClause;
 
@@ -151,7 +146,7 @@ int dpll(PileEnsembleDeClause& stack, PileEnsembleDeLitteraux& stackLitteraux, c
     return 0;
 }
 
-int iterativeDPLL(const ListeDeLitteraux& V, PokeballTourneeA90degreeSudEst ensembleDeClause){
+int iterativeDPLL(PokeballTourneeA90degreeSudEst ensembleDeClause){
     PileEnsembleDeClause stack;
     PileEnsembleDeLitteraux stackLitteraux;
     ListeDeLitteraux listeLitteraux;
@@ -186,23 +181,20 @@ int iterativeDPLL(const ListeDeLitteraux& V, PokeballTourneeA90degreeSudEst ense
     else return false;
 }
 
-bool CNFReader(string fileName, PokeballTourneeA90degreeSudEst pokeball){
-    ifstream inputFileStream("Data/d2.cnf");
+bool CNFReader(string fileName, PokeballTourneeA90degreeSudEst& pokeball){
+    pokeball.clear();
 
-    int count;
+    ifstream inputFileStream(fileName);
 
-    inputFileStream >> count;
+    if (inputFileStream.fail()) {
+        throw runtime_error("file failed to open");
+    }
 
-    inputFileStream.ignore(1, '\n');
+    string line;
 
-    cout << count << endl;
+    while(getline(inputFileStream, line)){
 
-
-    for(int i = 0; i < count; i++){
-        string line;
-        getline(inputFileStream, line);
-
-        cout << "bite" << endl;
+        Clause clause;
 
         if(line[0] == 'c' or line[0] == 'p'){
             continue;
@@ -210,50 +202,28 @@ bool CNFReader(string fileName, PokeballTourneeA90degreeSudEst pokeball){
 
         stringstream ss(line);
         string item;
-        std::vector<string> elems;
         while(getline(ss, item, ' ')){
-            elems.push_back(item);
-            cout << item << endl;
+            if(item != "0") {
+                clause.emplace_back(stoi(item));
+                cout << item << endl;
+            }
         }
+
+        pokeball.emplace_back(clause);
     }
 }
 
 int main() {
 
     PokeballTourneeA90degreeSudEst pokeballTournee;
-    ListeDeLitteraux listeDeCote;
 
-    Clause test;
-    Clause test2;
-    Clause test3;
-    Clause test4;
+    CNFReader("./Data/d3.cnf", pokeballTournee);
 
-    test.emplace_back(-2);
-    test.emplace_back(4);
-
-    test2.emplace_back(2);
-
-    test3.emplace_back(2);
-    test3.emplace_back(3);
-
-    test4.emplace_back(3);
-    test4.emplace_back(-1);
-    test4.emplace_back(4);
-
-    pokeballTournee.emplace_back(test);
-    pokeballTournee.emplace_back(test2);
-    pokeballTournee.emplace_back(test3);
-    pokeballTournee.emplace_back(test4);
-
-    listeDeCote = getListFromPokeball(pokeballTournee);
-
-    if (iterativeDPLL(listeDeCote, pokeballTournee) == 1) {
+    if (iterativeDPLL(pokeballTournee) == 1) {
         cout << "il y a une solution" << endl;
     } else {
         cout << "il n'y a pas une solution" << endl;
     }
-
-    CNFReader("./Data/d1.cnf", pokeballTournee);
 
     return 0;
 }
