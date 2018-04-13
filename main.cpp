@@ -169,10 +169,11 @@ int iterativeDPLL(const ListeDeLitteraux& V, PokeballTourneeA90degreeSudEst ense
         litteralAInstancier = 0;
         if (dpllIsTrue == 2) {
             stack.pop();
-            while(containLitteral(listeLitteraux, -stackLitteraux.top()) && stackLitteraux.top() != 0)
+            while(containLitteral(listeLitteraux, -stackLitteraux.top()) && stackLitteraux.top() != 0) {
                 listeLitteraux.erase(remove(listeLitteraux.begin(), listeLitteraux.end(), stackLitteraux.top()),
                                      listeLitteraux.end());
                 stackLitteraux.pop();
+            }
             litteralAInstancier = -stackLitteraux.top();
             stackLitteraux.pop();
 
@@ -228,6 +229,7 @@ int main() {
     Clause test4;
 
     test.emplace_back(-2);
+    test.emplace_back(4);
 
     test2.emplace_back(2);
 
