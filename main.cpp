@@ -2,7 +2,10 @@
 #include <vector>
 #include <stack>
 #include <algorithm>
-//#include "Source/infix2postfix.c"
+#include <fstream>
+#include <sstream>
+#include <regex>
+#include "lib/CNFReader.h++"
 
 using namespace std;
 
@@ -12,6 +15,9 @@ typedef vector<vector<BalaisCouille>> PokeballTourneeA90degreeSudEst;
 typedef vector<BalaisCouille> Clause;
 typedef vector<BalaisCouille> ListeDeLitteraux;
 typedef stack<PokeballTourneeA90degreeSudEst> PileEnsembleDeClause;
+typedef stack<BalaisCouille> PileEnsembleDeLitteraux;
+
+
 
 bool containsAnEmptyClause(PokeballTourneeA90degreeSudEst C){
     for(auto &clause : C){
@@ -75,7 +81,7 @@ ListeDeLitteraux getListFromPokeball(const PokeballTourneeA90degreeSudEst& Ensem
     return L;
 }
 
-BalaisCouille containsPureLitteral(const ListeDeLitteraux& V, const PokeballTourneeA90degreeSudEst& C){
+BalaisCouille containsPureLitteral(const PokeballTourneeA90degreeSudEst& C){
     ListeDeLitteraux L = getListFromPokeball(C);
 
     for (int i = 0; i < C.size(); i++) {
@@ -94,62 +100,121 @@ PokeballTourneeA90degreeSudEst andLiterral(PokeballTourneeA90degreeSudEst C, Bal
     return propagationUnitaire(C, l);
 }
 
-int dpll(const ListeDeLitteraux& V, PileEnsembleDeClause& stack) {
+int dpll(PileEnsembleDeClause& stack, PileEnsembleDeLitteraux& stackLitteraux, const int& litteralAInstancier) {
     BalaisCouille l = 0;
     PokeballTourneeA90degreeSudEst currentEnsemble = stack.top();
 
-    if (currentEnsemble.empty()) {
-        cout << "pas de clause" << endl;
-        return 1;
-    }
-    if (containsAnEmptyClause(currentEnsemble)) {
-        stack.pop();
-        cout << "contient une clause vide" << endl;
-        return 2;
-    }
-
-    bool pureOrMono = false;
-
-    l = containsPureLitteral(V, currentEnsemble);
-
-    if(l != 0){
-        cout << "il y un litteraux pure : " << l << endl;
-        currentEnsemble = (propagationUnitaire(currentEnsemble, l));
-        pureOrMono = true;
+    if (litteralAInstancier != 0) {
+        cout << "on instancie la litteral : " << litteralAInstancier << endl;
+        currentEnsemble = (propagationUnitaire(currentEnsemble, litteralAInstancier));
+        l = litteralAInstancier;
     } else {
-        for (auto &clause : currentEnsemble) {
-            if (clause.size() == 1) {
-                cout << "il y a un mono-litteraux : " << clause[0] << endl;
-                currentEnsemble = (propagationUnitaire(currentEnsemble, clause[0]));
-                pureOrMono = true;
-                break;
+
+        if (currentEnsemble.empty()) {
+            cout << "pas de clause" << endl;
+            return 1;
+        }
+        if (containsAnEmptyClause(currentEnsemble)) {
+            cout << "contient une clause vide" << endl;
+            return 2;
+        }
+
+        bool pureOrMono = false;
+
+        l = containsPureLitteral(currentEnsemble);
+
+        if (l != 0) {
+            cout << "il y un litteraux pure : " << l << endl;
+            currentEnsemble = (propagationUnitaire(currentEnsemble, l));
+            pureOrMono = true;
+        } else {
+            for (auto &clause : currentEnsemble) {
+                if (clause.size() == 1) {
+                    cout << "il y a un mono-litteral : " << clause[0] << endl;
+                    l = clause[0];
+                    currentEnsemble = (propagationUnitaire(currentEnsemble, clause[0]));
+                    pureOrMono = true;
+                    break;
+                }
+
+
             }
-
-
+        }
+        if (!pureOrMono) {
+            cout << "pas de mono-litteraux ou litteraux pure" << endl;
+            l = chooseLitteral(currentEnsemble);
+            cout << "litteraux a enlever : " << l << endl;
         }
     }
-    if (!pureOrMono) {
-        cout << "pas de mono-litteraux ou litteraux pure" << endl;
-        l = chooseLitteral(currentEnsemble);
-        cout << "litteraux a enlever : " << l << endl;
-    }
     stack.push(andLiterral(currentEnsemble, l));
+    stackLitteraux.push(l);
     return 0;
 }
 
 int iterativeDPLL(const ListeDeLitteraux& V, PokeballTourneeA90degreeSudEst ensembleDeClause){
     PileEnsembleDeClause stack;
-    BalaisCouille compteru = 0;
+    PileEnsembleDeLitteraux stackLitteraux;
+    ListeDeLitteraux listeLitteraux;
+
+    int litteralAInstancier = 0;
     int dpllIsTrue = 0;
+
+    stackLitteraux.push(0);
 
     stack.emplace(ensembleDeClause);
 
-    while((dpllIsTrue == 0) && !stack.empty()){
-        dpllIsTrue = dpll(V, stack);
+    while(dpllIsTrue != 1){
+        dpllIsTrue = dpll(stack, stackLitteraux, litteralAInstancier);
+        listeLitteraux.emplace_back(stackLitteraux.top());
+        litteralAInstancier = 0;
+        if (dpllIsTrue == 2) {
+            stack.pop();
+            while(containLitteral(listeLitteraux, -stackLitteraux.top()) && stackLitteraux.top() != 0)
+                listeLitteraux.erase(remove(listeLitteraux.begin(), listeLitteraux.end(), stackLitteraux.top()),
+                                     listeLitteraux.end());
+                stackLitteraux.pop();
+            litteralAInstancier = -stackLitteraux.top();
+            stackLitteraux.pop();
+
+        }
+        if (stackLitteraux.empty()) break;
+
     }
 
     if (dpllIsTrue == 1) return true;
     else return false;
+}
+
+bool CNFReader(string fileName, PokeballTourneeA90degreeSudEst pokeball){
+    ifstream inputFileStream("Data/d2.cnf");
+
+    int count;
+
+    inputFileStream >> count;
+
+    inputFileStream.ignore(1, '\n');
+
+    cout << count << endl;
+
+
+    for(int i = 0; i < count; i++){
+        string line;
+        getline(inputFileStream, line);
+
+        cout << "bite" << endl;
+
+        if(line[0] == 'c' or line[0] == 'p'){
+            continue;
+        }
+
+        stringstream ss(line);
+        string item;
+        std::vector<string> elems;
+        while(getline(ss, item, ' ')){
+            elems.push_back(item);
+            cout << item << endl;
+        }
+    }
 }
 
 int main() {
@@ -163,7 +228,6 @@ int main() {
     Clause test4;
 
     test.emplace_back(-2);
-    test.emplace_back(4);
 
     test2.emplace_back(2);
 
@@ -186,6 +250,8 @@ int main() {
     } else {
         cout << "il n'y a pas une solution" << endl;
     }
+
+    CNFReader("./Data/d1.cnf", pokeballTournee);
 
     return 0;
 }
